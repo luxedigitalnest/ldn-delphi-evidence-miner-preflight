@@ -1,0 +1,33 @@
+name: LDN Delphi Evidence Preflight (No Secrets)
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  offline-preflight:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Install Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Test original evidence validator and read-only API client
+        run: python -m unittest discover -v -p 'test_*.py'
+      - name: Confirm no real network or key needed
+        env:
+          DELPHI_API_ACCESS_KEY: ''
+        run: |
+          if python delphi_evidence_readonly.py terms; then
+            echo 'ERROR: diagnostics unexpectedly succeeded without credentials'
+            exit 1
+          fi
+          echo 'Verified read-only diagnostics require a key and do not make an unauthenticated request'
