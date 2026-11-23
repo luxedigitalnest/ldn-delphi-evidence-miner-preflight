@@ -2,7 +2,7 @@
 
 **Status: a genuine pre-submission validation module only. No live agent submissions, earned USDC, API credentials, wallet keys, or real market evidence are claimed.**
 
-This module implements strict preflight checks based on the organiser's live [Agent Arena Competition: Evidence Mining](https://dorahacks.io/hackathon/delphi-agent-competition2/detail) rules before the Delphi API and market guide are released **25 November 2026 at 17:00 UTC**.
+This module implements strict offline preflight checks for the organiser's [Agent Arena Competition: Evidence Mining](https://dorahacks.io/hackathon/delphi-agent-competition2/detail). **The official Evidence API/SDK documentation is now published** (verified 23 Nov); live competition markets still open **25 November 2026 at 17:00 UTC**. The event uses **Delphi Mainnet**, but **evidence-only submissions require only a Mainnet API key—no private key, wallet transaction, ETH or USDC**. See [the official integration checkpoint](OFFICIAL_GENSYN_EVIDENCE_API_2026-11-23.md).
 
 The official competition rewards credible, novel, dated public evidence. It allows **up to three API submissions per agent per market** and **three files per submission**. The API supports an **Idempotency-Key** to retry a timed-out request after checking `GET /v1/submissions`. Prize eligibility requires at least **10 judged submissions across 3+ markets**; sending arbitrary notes does not qualify.
 
@@ -20,12 +20,12 @@ The official competition rewards credible, novel, dated public evidence. It allo
 python -m unittest -v test_evidence_preflight.py
 python evidence_preflight.py YOUR_REAL_EVIDENCE.json --ledger genuine_receipts.json --evidence-dir evidence
 ```
-Do not submit a synthetic fixture. The organiser will publish the actual API key instructions, endpoint/payload and official starter agent on 25 November. Only then implement a documented API adapter with explicit consent, safe receipt checks, proper account verification and rate-limit handling.
+Do not submit a synthetic fixture. The organiser has published official competition-specific API instructions and an SDK, linked in [the integration checkpoint](OFFICIAL_GENSYN_EVIDENCE_API_2026-11-23.md). Once owner Mainnet identity, Mainnet API key and terms are genuinely verified, a documented evidence-only adapter can be built and tested read-only. Submit only after markets open on 25 Nov, the user's explicit terms acceptance, source review, and account limit checks. The key must stay in a private local secret store and must never be committed.
 
-## Honest blockers as of 22 Nov 2026
+## Honest blockers (originally checked 22 Nov; documentation updated 23 Nov)
 
 1. Delphi Google/Privy authentication is inconsistent: site still says SIGN IN, console warns `Attempted to log in, but user is already logged in`. No confirmed wallet address. DoraHacks registration must use the same genuine Delphi wallet, not an invented one.
-2. No competition API keys/market list until 25 November.
-3. No human-reviewed market facts, no API requests, no judged submissions and no cash payout verified.
+2. The **official API instructions now exist**, but this account has **no verified Mainnet Delphi API key**. The competition market list does not open until 25 November. A Mainnet Delphi account and matching DoraHacks wallet still need verification. No wallet signer or private key is necessary to submit evidence.
+3. No human-reviewed real competition market facts, no authenticated Evidence API requests, no judged submissions and no cash payout verified. Do not accept account Terms without the owner's explicit informed consent.
 
 Licensed Apache-2.0; intended for the existing LuxeDigitalNest Crypto project.
