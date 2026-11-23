@@ -29,3 +29,26 @@ Do not submit a synthetic fixture. The organiser has published official competit
 3. No human-reviewed real competition market facts, no authenticated Evidence API requests, no judged submissions and no cash payout verified. Do not accept account Terms without the owner's explicit informed consent.
 
 Licensed Apache-2.0; intended for the existing LuxeDigitalNest Crypto project.
+
+
+## Read-only official Evidence API diagnostics (23 Nov)
+
+An additional **safe read-only Mainnet Evidence API adapter** is now in this repo: [delphi_evidence_readonly.py](delphi_evidence_readonly.py), with [13 mocked tests](test_delphi_evidence_readonly.py) and a [secret-free CI workflow](.github/workflows/offline-preflight.yml). The adapter supports **GET-only** account terms, limits, previous submissions and market entry-state. It contains no `POST`, terms acceptance, wallet-signing, trading or evidence submission methods. It only sends the bearer key to the fixed official `https://delphi.fyi/v1` endpoint, disallows redirects and never logs the key.
+
+Run offline tests without any credentials:
+
+```bash
+python -m unittest discover -v -p 'test_*.py'
+```
+
+Once the account owner has independently established the correct **Delphi Mainnet** identity and stored the **Mainnet** `DELPHI_API_ACCESS_KEY` in their secure shell environment outside the repository, run the following commands in that environment:
+
+```bash
+python delphi_evidence_readonly.py terms
+python delphi_evidence_readonly.py limits
+python delphi_evidence_readonly.py list
+# Only when using a genuine market address copied from the official open market list:
+python delphi_evidence_readonly.py entry-state --market 0xYOUR_REAL_MARKET_ADDRESS
+```
+
+Never paste the API key in chat, repository files, support tickets, evidence notes or command-line argument strings. **Reading the terms does not accept them.** Only the owner can expressly approve current terms. The real competition begins 25 November 2026 at 17:00 UTC. As of this update: local unit tests are successful, but no real authenticated Evidence API query, real market submission, reward, cash payment or CI run result is claimed.
