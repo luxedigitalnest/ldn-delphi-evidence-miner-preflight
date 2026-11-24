@@ -1,6 +1,8 @@
 """Offline-only tests. Synthetic fixtures are never competition submissions."""
 import copy
 import unittest
+import tempfile
+from pathlib import Path
 from datetime import datetime, timedelta, timezone
 from evidence_preflight import EvidenceError, evidence_key, public_url, validate
 
@@ -73,6 +75,51 @@ class GuardTests(unittest.TestCase):
         a=make();self.assertRaises(EvidenceError,self.yes,a,[{"market_id":a["market_id"],"side":"NO","idempotency_key":"prior"}])
     def test_timezone_required(self):
         a=make();a["evidence_cutoff"]="2026-11-30T17:00:00";self.bad(a)
+
+    def test_review_flag_must_be_boolean_true(self):
+        for value in ("false", "true", 1):
+            with self.subTest(value=value):
+                a=make(); a["human_reviewed"]=value; self.bad(a)
+    def test_access_flag_must_be_boolean_true(self):
+        a=make(); a["sources"][0]["publicly_accessible"]="false"; self.bad(a)
+    def test_address_alias_shares_key_and_market_limit(self):
+        a=make(); a["market_id"]="0x"+"aB"*20
+        b=copy.deepcopy(a); b["market_id"]=a["market_id"].lower()
+        self.assertEqual(evidence_key(a),evidence_key(b))
+        ledger=[{"market_id":b["market_id"],"side":"YES","idempotency_key":f"other{i}"} for i in range(3)]
+        self.assertRaises(EvidenceError,self.yes,a,ledger)
+    def test_address_alias_blocks_opposite_side(self):
+        a=make(); a["market_id"]="0x"+"Ab"*20
+        self.assertRaises(EvidenceError,self.yes,a,[{"market_id":a["market_id"].lower(),"side":"no","idempotency_key":"prior"}])
+    def test_invalid_ledger_rejected(self):
+        for ledger in ({}, ["not an object"]):
+            self.assertRaises(EvidenceError,self.yes,make(),ledger)
+    def test_attachment_requires_verified_directory(self):
+        a=make(); a["attachments"]=["file.txt"]; self.bad(a)
+    def test_existing_attachment_accepted(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            Path(tmp,"file.txt").write_text("synthetic",encoding="utf-8")
+            a=make(); a["attachments"]=["file.txt"]
+            result=validate(a,now=NOW,evidence_dir=tmp)
+            self.assertEqual(result["attachment_count"],1)
+    def test_attachment_symlink_escape_rejected(self):
+        with tempfile.TemporaryDirectory() as root, tempfile.TemporaryDirectory() as outside:
+            target=Path(outside,"outside.txt"); target.write_text("synthetic",encoding="utf-8")
+            try:
+                Path(root,"link.txt").symlink_to(target)
+            except (OSError, NotImplementedError):
+                self.skipTest("Symlink not available on this host")
+            a=make(); a["attachments"]=["link.txt"]
+            with self.assertRaises(EvidenceError):
+                validate(a,now=NOW,evidence_dir=root)
+    def test_duplicate_attachment_rejected(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            Path(tmp,"file.txt").write_text("synthetic",encoding="utf-8")
+            a=make(); a["attachments"]=["file.txt","./file.txt"]
+            with self.assertRaises(EvidenceError):
+                validate(a,now=NOW,evidence_dir=tmp)
+    def test_windows_attachment_path_rejected(self):
+        a=make(); a["attachments"]=["C:/private/file.txt"]; self.bad(a)
 
 if __name__=="__main__":
     unittest.main(verbosity=2)
