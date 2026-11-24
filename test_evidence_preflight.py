@@ -121,5 +121,26 @@ class GuardTests(unittest.TestCase):
     def test_windows_attachment_path_rejected(self):
         a=make(); a["attachments"]=["C:/private/file.txt"]; self.bad(a)
 
+    def test_nonstring_market_ids_rejected(self):
+        for value in (None, True, 123):
+            with self.subTest(value=value):
+                a=make(); a["market_id"]=value; self.bad(a)
+    def test_nonstring_candidate_evidence_rejected(self):
+        for field in ("side", "fact", "why_novel"):
+            with self.subTest(field=field):
+                a=make(); a[field]=["a sufficiently long but non-text field"]*3; self.bad(a)
+    def test_nonstring_source_evidence_rejected(self):
+        for field in ("title", "supporting_excerpt"):
+            with self.subTest(field=field):
+                a=make(); a["sources"][0][field]={"fake":"not a source excerpt or title"}; self.bad(a)
+    def test_malformed_url_fails_closed(self):
+        for url in ("https://[broken", "https://official-project.org:99999/release", "https://official-project.org:bad/release"):
+            with self.subTest(url=url):
+                a=make(); a["sources"][0]["url"]=url; self.bad(a)
+    def test_incomplete_receipt_row_fails_closed(self):
+        for row in ({}, {"market_id":"other", "side":"YES"}, {"market_id":"other", "side":"invalid", "idempotency_key":"key"}):
+            with self.subTest(row=row):
+                self.assertRaises(EvidenceError,self.yes,make(),[row])
+
 if __name__=="__main__":
     unittest.main(verbosity=2)

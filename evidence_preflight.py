@@ -30,8 +30,14 @@ def utc_time(text):
         raise EvidenceError("Supply a valid timestamp including a UTC offset") from exc
 
 def public_url(text):
-    parsed = urlsplit(str(text))
-    host = (parsed.hostname or "").lower().rstrip(".")
+    if not isinstance(text, str) or not text.strip():
+        raise EvidenceError("Source URL must be a nonempty string")
+    try:
+        parsed = urlsplit(text)
+        host = (parsed.hostname or "").lower().rstrip(".")
+        parsed.port  # Reject malformed or out-of-range ports.
+    except ValueError as exc:
+        raise EvidenceError("Malformed source URL") from exc
     if parsed.scheme != "https" or not host or parsed.username or parsed.password:
         raise EvidenceError("Source must be a public HTTPS URL without credentials")
     if host in {"localhost", "example.com", "example.org", "example.net"} or host.endswith((".localhost", ".local", ".internal", ".test", ".invalid")):
@@ -51,7 +57,9 @@ def canonical_fact(statement):
     return " ".join(re.sub(r"[^\w\s]", " ", statement.lower(), flags=re.UNICODE).split())
 
 def canonical_market(market):
-    market = str(market).strip()
+    if not isinstance(market, str):
+        raise EvidenceError("Market id must be a string")
+    market = market.strip()
     if re.fullmatch(r"0x[0-9a-fA-F]{40}", market):
         return market.lower()
     return market
@@ -70,8 +78,10 @@ def validate(record, ledger=None, *, now=None, evidence_dir=None):
     if not isinstance(record, dict):
         raise EvidenceError("Candidate must be a JSON object")
     market = canonical_market(record.get("market_id", ""))
-    side = str(record.get("side", "")).upper()
-    fact = str(record.get("fact", "")).strip()
+    if any(not isinstance(record.get(field), str) for field in ("side", "fact", "why_novel")):
+        raise EvidenceError("Side, fact and novelty rationale must be strings")
+    side = record["side"].upper()
+    fact = record["fact"].strip()
     if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_-]{0,127}", market):
         raise EvidenceError("Market id must come from the official competition market list")
     if side not in ("YES", "NO"):
@@ -97,9 +107,9 @@ def validate(record, ledger=None, *, now=None, evidence_dir=None):
         if url in urls:
             raise EvidenceError("Same source URL cited twice")
         urls.add(url)
-        if len(str(source.get("title", "")).strip()) < 8:
+        if not isinstance(source.get("title"), str) or len(source["title"].strip()) < 8:
             raise EvidenceError("Include actual source title")
-        if len(str(source.get("supporting_excerpt", "")).strip()) < 20:
+        if not isinstance(source.get("supporting_excerpt"), str) or len(source["supporting_excerpt"].strip()) < 20:
             raise EvidenceError("Quote or accurately paraphrase the supporting evidence")
         checked = utc_time(source.get("checked_at"))
         if checked > now:
@@ -128,7 +138,10 @@ def validate(record, ledger=None, *, now=None, evidence_dir=None):
         if not resolved.is_file() or resolved in seen_files:
             raise EvidenceError("Attachment must be a distinct verified existing file")
         seen_files.add(resolved)
-    previous = [row for row in ledger if canonical_market(row.get("market_id", "")) == market]
+    for row in ledger:
+        if not isinstance(row.get("market_id"), str) or not row["market_id"].strip() or not isinstance(row.get("side"), str) or row["side"].upper() not in ("YES", "NO") or not isinstance(row.get("idempotency_key"), str) or not row["idempotency_key"].strip():
+            raise EvidenceError("Receipt ledger entries require market id, side and idempotency key")
+    previous = [row for row in ledger if canonical_market(row["market_id"]) == market]
     if any(str(row.get("side", "")).upper() != side for row in previous):
         raise EvidenceError("Conflicting market direction; avoid evidence cancellation")
     key = evidence_key(record)
