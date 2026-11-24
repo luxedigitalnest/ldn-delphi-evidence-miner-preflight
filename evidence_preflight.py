@@ -9,7 +9,7 @@ import json
 import re
 import sys
 from datetime import datetime, timezone
-from pathlib import Path
+from pathlib import Path, PureWindowsPath
 from urllib.parse import urlsplit
 
 MIN_FACT_LENGTH = 45
@@ -50,17 +50,26 @@ def public_url(text):
 def canonical_fact(statement):
     return " ".join(re.sub(r"[^\w\s]", " ", statement.lower(), flags=re.UNICODE).split())
 
+def canonical_market(market):
+    market = str(market).strip()
+    if re.fullmatch(r"0x[0-9a-fA-F]{40}", market):
+        return market.lower()
+    return market
+
 def evidence_key(record):
-    content = [str(record["market_id"]).strip(), canonical_fact(record["fact"])]
+    content = [canonical_market(record["market_id"]), canonical_fact(record["fact"])]
     return hashlib.sha256("\n".join(content).encode("utf-8")).hexdigest()
 
 def validate(record, ledger=None, *, now=None, evidence_dir=None):
     """Validate a candidate WITHOUT asserting it is true or sending it anywhere."""
-    ledger = ledger or []
+    if ledger is None:
+        ledger = []
+    if not isinstance(ledger, list) or any(not isinstance(row, dict) for row in ledger):
+        raise EvidenceError("Receipt ledger must be a list of structured objects")
     now = now or datetime.now(timezone.utc)
     if not isinstance(record, dict):
         raise EvidenceError("Candidate must be a JSON object")
-    market = str(record.get("market_id", ""))
+    market = canonical_market(record.get("market_id", ""))
     side = str(record.get("side", "")).upper()
     fact = str(record.get("fact", "")).strip()
     if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_-]{0,127}", market):
@@ -69,7 +78,7 @@ def validate(record, ledger=None, *, now=None, evidence_dir=None):
         raise EvidenceError("Side must be YES or NO")
     if len(fact) < MIN_FACT_LENGTH or len(fact) > 1500:
         raise EvidenceError("Give one specific, adequately detailed factual claim")
-    if not record.get("human_reviewed", False):
+    if record.get("human_reviewed") is not True:
         raise EvidenceError("A human must confirm source faithfulness before submission")
     rationale = str(record.get("why_novel", "")).strip()
     if len(rationale) < 30:
@@ -95,20 +104,33 @@ def validate(record, ledger=None, *, now=None, evidence_dir=None):
         checked = utc_time(source.get("checked_at"))
         if checked > now:
             raise EvidenceError("Cannot claim to have checked a source in the future")
-        if not source.get("publicly_accessible", False):
+        if source.get("publicly_accessible") is not True:
             raise EvidenceError("Source accessibility must be independently verified")
     attachments = record.get("attachments", [])
     if not isinstance(attachments, list) or len(attachments) > MAX_FILES:
         raise EvidenceError("Maximum 3 files per submission")
+    seen_files = set()
     for item in attachments:
-        path = Path(str(item))
-        if path.is_absolute() or ".." in path.parts or path.suffix.lower() not in ALLOWED_ATTACHMENTS:
+        if not isinstance(item, str):
             raise EvidenceError("Attachment must be a relative supported file")
-        if evidence_dir and not (Path(evidence_dir) / path).is_file():
-            raise EvidenceError("Attachment is not a verified existing file")
-    if any(row.get("market_id") == market and row.get("side") != side for row in ledger):
+        path = Path(item)
+        win = PureWindowsPath(item)
+        if path.is_absolute() or win.drive or win.root or ".." in path.parts or ".." in win.parts or "\\" in item or path.suffix.lower() not in ALLOWED_ATTACHMENTS:
+            raise EvidenceError("Attachment must be a relative supported file")
+        if not evidence_dir:
+            raise EvidenceError("Provide --evidence-dir to verify attachment existence")
+        root = Path(evidence_dir).resolve()
+        try:
+            resolved = (root / path).resolve(strict=True)
+            resolved.relative_to(root)
+        except (OSError, ValueError, RuntimeError) as exc:
+            raise EvidenceError("Attachment missing or outside the evidence directory") from exc
+        if not resolved.is_file() or resolved in seen_files:
+            raise EvidenceError("Attachment must be a distinct verified existing file")
+        seen_files.add(resolved)
+    previous = [row for row in ledger if canonical_market(row.get("market_id", "")) == market]
+    if any(str(row.get("side", "")).upper() != side for row in previous):
         raise EvidenceError("Conflicting market direction; avoid evidence cancellation")
-    previous = [row for row in ledger if row.get("market_id") == market]
     key = evidence_key(record)
     if any(row.get("idempotency_key") == key for row in ledger):
         raise EvidenceError("Already recorded: preserve original idempotency key; check receipt")
