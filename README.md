@@ -2,7 +2,7 @@
 
 **Status: a genuine pre-submission validation module only. No live agent submissions, earned USDC, API credentials, wallet keys, or real market evidence are claimed.**
 
-This module implements strict offline preflight checks for the organiser's [Agent Arena Competition: Evidence Mining](https://dorahacks.io/hackathon/delphi-agent-competition2/detail). **The official Evidence API/SDK documentation is now published** (verified 23 Nov); live competition markets still open **25 November 2026 at 17:00 UTC**. The event uses **Delphi Mainnet**, but **evidence-only submissions require only a Mainnet API key—no private key, wallet transaction, ETH or USDC**. See [the official integration checkpoint](OFFICIAL_GENSYN_EVIDENCE_API_2026-11-23.md).
+This module implements strict offline preflight checks for the organiser's [Agent Arena Competition: Evidence Mining](https://dorahacks.io/hackathon/delphi-agent-competition2/detail). **The official Evidence API/SDK documentation is now published** (verified 23 Nov); the scheduled competition window runs from **25 November 2026 at 17:00 UTC to 11 December 2026 at 17:00 UTC**. The event uses **Delphi Mainnet**, but **evidence-only submissions require only a Mainnet API key—no private key, wallet transaction, ETH or USDC**. See [the official integration checkpoint](OFFICIAL_GENSYN_EVIDENCE_API_2026-11-23.md).
 
 The official competition rewards credible, novel, dated public evidence. It allows **up to three API submissions per agent per market** and **three files per submission**. The API supports an **Idempotency-Key** to retry a timed-out request after checking `GET /v1/submissions`. Prize eligibility requires at least **10 judged submissions across 3+ markets**; sending arbitrary notes does not qualify.
 
@@ -25,7 +25,7 @@ Do not submit a synthetic fixture. The organiser has published official competit
 ## Honest blockers (originally checked 22 Nov; documentation updated 23 Nov)
 
 1. Delphi Google/Privy authentication is inconsistent: site still says SIGN IN, console warns `Attempted to log in, but user is already logged in`. No confirmed wallet address. DoraHacks registration must use the same genuine Delphi wallet, not an invented one.
-2. The **official API instructions now exist**, but this account has **no verified Mainnet Delphi API key**. The competition market list does not open until 25 November. A Mainnet Delphi account and matching DoraHacks wallet still need verification. No wallet signer or private key is necessary to submit evidence.
+2. The **official API instructions now exist**, but this account has **no verified Mainnet Delphi API key**. The competition market list was scheduled to open on 25 November. A Mainnet Delphi account and matching DoraHacks wallet still need verification. No wallet signer or private key is necessary to submit evidence.
 3. No human-reviewed real competition market facts, no authenticated Evidence API requests, no judged submissions and no cash payout verified. Do not accept account Terms without the owner's explicit informed consent.
 
 Licensed Apache-2.0; intended for the existing LuxeDigitalNest Crypto project.
@@ -33,7 +33,7 @@ Licensed Apache-2.0; intended for the existing LuxeDigitalNest Crypto project.
 
 ## Read-only official Evidence API diagnostics (23 Nov)
 
-An additional **safe read-only Mainnet Evidence API adapter** is now in this repo: [delphi_evidence_readonly.py](delphi_evidence_readonly.py), with [13 mocked tests](test_delphi_evidence_readonly.py) and a [secret-free CI workflow](.github/workflows/offline-preflight.yml). The adapter supports **GET-only** account terms, limits, previous submissions and market entry-state. It contains no `POST`, terms acceptance, wallet-signing, trading or evidence submission methods. It only sends the bearer key to the fixed official `https://delphi.fyi/v1` endpoint, disallows redirects and never logs the key.
+An additional **safe read-only Mainnet Evidence API adapter** is now in this repo: [delphi_evidence_readonly.py](delphi_evidence_readonly.py), with [mocked tests](test_delphi_evidence_readonly.py) and a [secret-free CI workflow](.github/workflows/offline-preflight.yml). The adapter supports **GET-only** account terms, limits, previous submissions, an individual submission receipt and market entry-state. It contains no `POST`, terms acceptance, wallet-signing, trading or evidence submission methods. It only sends the bearer key to the fixed official `https://delphi.fyi/v1` endpoint, disallows redirects and never logs the key.
 
 Run offline tests without any credentials:
 
@@ -47,8 +47,10 @@ Once the account owner has independently established the correct **Delphi Mainne
 python delphi_evidence_readonly.py terms
 python delphi_evidence_readonly.py limits
 python delphi_evidence_readonly.py list
+# Only using an actual submission ID returned by the official API:
+python delphi_evidence_readonly.py receipt --submission-id YOUR_REAL_SUBMISSION_ID
 # Only when using a genuine market address copied from the official open market list:
 python delphi_evidence_readonly.py entry-state --market 0xYOUR_REAL_MARKET_ADDRESS
 ```
 
-Never paste the API key in chat, repository files, support tickets, evidence notes or command-line argument strings. **Reading the terms does not accept them.** Only the owner can expressly approve current terms. The real competition begins 25 November 2026 at 17:00 UTC. As of this update: local unit tests are successful, but no real authenticated Evidence API query, real market submission, reward, cash payment or CI run result is claimed.
+Never paste the API key in chat, repository files, support tickets, evidence notes or command-line argument strings. **Reading the terms does not accept them.** Only the owner can expressly approve current terms. The receipt command is GET-only and follows the [official evidence API guide](https://github.com/gensyn-ai/gensyn-delphi-skills/blob/main/reference/evidence-api.md). It rejects unsafe path identifiers before making a request. No real authenticated Evidence API query, real market submission, reward or cash payment is claimed. New receipt tests require verification by CI.
