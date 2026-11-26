@@ -20,6 +20,7 @@ from urllib.request import HTTPRedirectHandler, Request, build_opener
 
 API_BASE = "https://delphi.fyi/v1"
 ADDRESS_RE = re.compile(r"^0x[0-9a-fA-F]{40}$")
+SUBMISSION_ID_RE = re.compile(r"[A-Za-z0-9][A-Za-z0-9_-]{0,127}")
 
 
 class NoRedirect(HTTPRedirectHandler):
@@ -126,6 +127,12 @@ class EvidenceReadOnly:
             query["agentId"] = agent_id
         return self._get("/submissions", query)
 
+    def get_submission(self, submission_id: str) -> dict:
+        """Read one genuine receipt ID from the official account; never retry or submit."""
+        if not isinstance(submission_id, str) or not SUBMISSION_ID_RE.fullmatch(submission_id):
+            raise ValueError("submission_id must be a safe ID copied from an actual account receipt")
+        return self._get(f"/submissions/{submission_id}")
+
     def entry_state(self, market: str) -> dict:
         self._validate_market(market)
         return self._get(f"/markets/{market}/entry-state")
@@ -138,9 +145,10 @@ class EvidenceReadOnly:
 
 def main(argv: Optional[list[str]] = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("action", choices=("terms", "limits", "list", "entry-state"))
+    parser.add_argument("action", choices=("terms", "limits", "list", "receipt", "entry-state"))
     parser.add_argument("--market", help="marketAddress copied from official list")
     parser.add_argument("--agent-id", help="filter existing submissions by agent ID")
+    parser.add_argument("--submission-id", help="exact ID from an actual submission receipt")
     parser.add_argument("--limit", type=int, default=25)
     args = parser.parse_args(argv)
     try:
@@ -151,6 +159,10 @@ def main(argv: Optional[list[str]] = None) -> int:
             result = client.limits()
         elif args.action == "list":
             result = client.submissions(args.market, args.agent_id, args.limit)
+        elif args.action == "receipt":
+            if not args.submission_id:
+                parser.error("receipt requires --submission-id from an actual receipt")
+            result = client.get_submission(args.submission_id)
         else:
             if not args.market:
                 parser.error("entry-state requires --market from official market list")

@@ -61,6 +61,20 @@ class Tests(unittest.TestCase):
         c,calls=self.make(); c.entry_state(ADDRESS)
         self.assertEqual(calls[0][0].full_url,API_BASE+"/markets/"+ADDRESS+"/entry-state")
 
+    def test_get_single_receipt_only(self):
+        c,calls=self.make(); result=c.get_submission("receipt_test-123")
+        self.assertEqual(len(calls),1)
+        self.assertEqual(calls[0][0].get_method(),"GET")
+        self.assertEqual(calls[0][0].full_url,API_BASE+"/submissions/receipt_test-123")
+        self.assertEqual(result["meta"]["request_id"],"req-test")
+
+    def test_unsafe_receipt_ids_never_contact_network(self):
+        c,calls=self.make()
+        for bad in ("", "../terms", "a/b", "a%2fb", "a?x=1", "a#x", "a\\b", "a\nb", ".", None, True, 123, "x"*129):
+            with self.subTest(bad=bad):
+                with self.assertRaises(ValueError): c.get_submission(bad)
+        self.assertEqual(calls,[])
+
     def test_invalid_addresses_never_contact_network(self):
         c,calls=self.make()
         for bad in ("", "../../terms", "0x123", "0x"+"z"*40, "https://evil.test"):

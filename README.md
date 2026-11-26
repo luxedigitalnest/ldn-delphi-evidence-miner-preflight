@@ -2,7 +2,7 @@
 
 **Status: a genuine pre-submission validation module only. No live agent submissions, earned USDC, API credentials, wallet keys, or real market evidence are claimed.**
 
-This module implements strict offline preflight checks for the organiser's [Agent Arena Competition: Evidence Mining](https://dorahacks.io/hackathon/delphi-agent-competition2/detail). **The official Evidence API/SDK documentation is now published** (verified 23 Nov); live competition markets opened **25 November 2026 at 17:00 UTC**. The event uses **Delphi Mainnet**. Evidence-only submissions use a Mainnet API key, without a trade, deposit or on-chain transaction; initial key issuance may require account/wallet authorization. See [the official integration checkpoint](OFFICIAL_GENSYN_EVIDENCE_API_2026-11-23.md).
+This module implements strict offline preflight checks for the organiser's [Agent Arena Competition: Evidence Mining](https://dorahacks.io/hackathon/delphi-agent-competition2/detail). **The official Evidence API/SDK documentation is now published** (verified 23 Nov); live competition markets opened **25 November 2026 at 17:00 UTC** and is scheduled to close **11 December 2026 at 17:00 UTC**. The event uses **Delphi Mainnet**. Evidence-only submissions use a Mainnet API key, without a trade, deposit or on-chain transaction; initial key issuance may require account/wallet authorization. See [the official integration checkpoint](OFFICIAL_GENSYN_EVIDENCE_API_2026-11-23.md).
 
 The official competition rewards credible, novel, dated public evidence. It allows **up to three API submissions per agent per market** and **three files per submission**. The API supports an **Idempotency-Key** to retry a timed-out request after checking `GET /v1/submissions`. Prize eligibility requires at least **10 judged submissions across 3+ markets**; sending arbitrary notes does not qualify.
 
@@ -33,7 +33,7 @@ Licensed Apache-2.0; intended for the existing LuxeDigitalNest Crypto project.
 
 ## Read-only official Evidence API diagnostics (23 Nov)
 
-An additional **safe read-only Mainnet Evidence API adapter** is now in this repo: [delphi_evidence_readonly.py](delphi_evidence_readonly.py), with [13 mocked tests](test_delphi_evidence_readonly.py) and a [secret-free CI workflow](.github/workflows/offline-preflight.yml). The adapter supports **GET-only** account terms, limits, previous submissions and market entry-state. It contains no `POST`, terms acceptance, wallet-signing, trading or evidence submission methods. It only sends the bearer key to the fixed official `https://delphi.fyi/v1` endpoint, disallows redirects and never logs the key.
+An additional **safe read-only Mainnet Evidence API adapter** is now in this repo: [delphi_evidence_readonly.py](delphi_evidence_readonly.py), with [mocked tests](test_delphi_evidence_readonly.py) and a [secret-free CI workflow](.github/workflows/offline-preflight.yml). The adapter supports **GET-only** account terms, limits, previous submissions, an individual receipt and market entry-state. It contains no `POST`, terms acceptance, wallet-signing, trading or evidence submission methods. It only sends the bearer key to the fixed official `https://delphi.fyi/v1` endpoint, disallows redirects and never logs the key.
 
 Run offline tests without any credentials:
 
@@ -47,6 +47,8 @@ Once the account owner has independently established the correct **Delphi Mainne
 python delphi_evidence_readonly.py terms
 python delphi_evidence_readonly.py limits
 python delphi_evidence_readonly.py list
+# Only with a genuine submission ID returned by the API:
+python delphi_evidence_readonly.py receipt --submission-id YOUR_REAL_SUBMISSION_ID
 # Only when using a genuine market address copied from the official open market list:
 python delphi_evidence_readonly.py entry-state --market 0xYOUR_REAL_MARKET_ADDRESS
 ```
@@ -60,3 +62,7 @@ Never paste the API key in chat, repository files, support tickets, evidence not
 - The organiser's [Delphi Evidence Mining Pilot Terms](https://drive.google.com/file/d/1evN_0sB1Mn5OcpCrwaaUB9VIKdlXt-d1/view) were reviewed. Entry requires no deposit, trade or purchase. Agent/data/compute costs remain the entrant's responsibility. Granting an agent API access authorizes submissions on the entrant's behalf without individual review under those terms; the entrant remains responsible. Submitted original or authorized materials carry a perpetual, worldwide, nonexclusive license including model training and commercialization. Only public, lawfully shareable material may be used; private personal data and fabricated evidence are prohibited. The owner must understand and accept those conditions before any key issuance or submission. This repository does not accept them or grant agent authority.
 - Prize ranking requires at least ten judged submissions across at least three markets, but the three-per-market limit means at least four distinct markets are needed for ten submissions. Evidence rewards can be zero. Identity verification, eligibility and sanctions screening precede prize payment.
 - **Remaining gate:** verify the registered wallet match, obtain explicit owner approval for any wallet/authentication operation and the current terms, then securely provision the Mainnet key and perform GET-only diagnostics first. Research notes are candidates, not judged entries. No key, signature, terms acceptance, trade or evidence submission occurred during this checkpoint.
+
+## 26 November — receipt lookup
+
+The draft includes the GET-only receipt route documented in the [official evidence API guide](https://github.com/gensyn-ai/gensyn-delphi-skills/blob/main/reference/evidence-api.md). Unsafe identifiers are rejected before transport. [CI run 45753670585](https://github.com/luxedigitalnest/ldn-delphi-evidence-miner-preflight/actions/runs/45753670585) passed 50 offline tests including both new receipt regressions. No real API call, evidence entry or cash reward is claimed.
